@@ -4,6 +4,9 @@
 #include <random>
 #include <bitset>
 #include <array>
+#include <stdint.h>
+#include <random>
+#include "XoshiroCpp.hpp"
 
 
 #include <pybind11/pybind11.h>
@@ -18,6 +21,13 @@ inline int modK(int a) {
   return (a > K-1) ? a-K : a;
 }
 
+inline double exp_fast(double a)
+{
+   union { double d; long long x; } u;
+   u.x = (long long)(6497320848556798LL * a + 0x3fef127e83d16f12LL);
+   return u.d;
+}
+
 
 namespace py = pybind11;
 using std::vector;
@@ -26,20 +36,29 @@ using std::bitset;
 
 typedef double Real;
 
+using namespace XoshiroCpp;
+
 class Model {
     public:
     bitset<K*K> spins;
     double J;
     double hmu;
     double energy;
+    int twojpairs;
+    int magnetization;
+    std::mt19937 rng;
 
     
-    Model(double J, double hmu, vector<int> spins_input) : J(J), hmu(hmu) {
+    Model(uint64_t seed, double J, double hmu, vector<int> spins_input) : J(J), hmu(hmu) {
+        twojpairs = 0;
+        magnetization = 0;
         for (int i = 0; i < K*K; i++) {
             spins[i] = (spins_input[i] > 0) ? true : false;
         }
+
         energy = calc_energy();
-    }
+        rng = std::mt19937(seed);
+        }
 
 
     vector<int> get_spins() {
@@ -52,6 +71,8 @@ class Model {
 
     double calc_energy() {
         double E = 0.0;
+        twojpairs = 0;
+        magnetization = 0;
         for(int i = 0; i < K; i++) {
             for(int j = 0; j < K; j++) {
                 int s = spins[IDX(i, j)];
@@ -61,6 +82,8 @@ class Model {
                 int sright = spins[IDX(i, modK(j+1))];
                 int sumspins = (sup + sdown + sleft + sright)*2 - 4;
                 E += -((0.5*J)*sumspins + hmu)*(2*s-1);
+                twojpairs += sumspins*(2*s-1);
+                magnetization += (2*s+1);
             }
         }
         return E;
@@ -87,7 +110,7 @@ class Model {
                 spins[IDX(i, j)] = !s;
                 this->energy += dE;
             } else {
-                Real p = exp(-beta*dE);
+                Real p = exp_fast(-beta*dE);
                 if (samp_rand[k] < p) {
                     spins[IDX(i, j)] = !s;
                     this->energy += dE;
@@ -97,19 +120,24 @@ class Model {
         return energies;
     }
 
-    std::pair<Real, Real> random_mc_meanstd(vector<int>& x_rand, vector<int>& y_rand, vector<Real>& samp_rand, Real beta, int samp_freq) {
+    std::tuple<Real, Real, Real> random_mc_meanstd(int nsamp, Real beta, int samp_freq) {
+        std::uniform_real_distribution<double> dist(0,1);
+        std::uniform_int_distribution<int> intdist(0, K-1);
+        
         int next_samp = 0;
-        Real sumsamp = 0.0;
         Real sumsq = 0.0;
-        for (int k = 0; k < x_rand.size(); k++) {
+        int64_t sum_2jpairs = 0;
+        int64_t sum_mag = 0;
+        for (int k = 0; k < nsamp; k++) {
             if (k == next_samp) {
-                Real samp = this->energy;
-                sumsamp += samp;
+                sum_2jpairs += twojpairs;
+                sum_mag += magnetization;
+                Real samp = -0.5*J*twojpairs - hmu*magnetization;
                 sumsq += samp*samp;
                 next_samp += samp_freq;
             }
-            int i = x_rand[k];
-            int j = y_rand[k];
+            int i = intdist(rng);
+            int j = intdist(rng);
             int s = spins[IDX(i, j)];
             int sup = spins[IDX(modK(i+(K-1)), j)];
             int sdown = spins[IDX(modK(i+1), j)];
@@ -119,18 +147,22 @@ class Model {
             double dE = 2*(2*s-1)*(J*sumspins + hmu);
             if(dE < 0) {
                 spins[IDX(i, j)] = !s;
+                twojpairs -= 4*(2*s-1)*sumspins;
+                magnetization -= 2*(2*s-1);
                 this->energy += dE;
             } else {
-                double p = exp(-beta*dE);
-                if (samp_rand[k] < p) {
+                double p = exp_fast (-beta*dE);
+                if (dist(rng) < p) {
                     spins[IDX(i, j)] = !s;
+                    twojpairs -= 4*(2*s-1)*sumspins;
+                    magnetization -= 2*(2*s-1);
                     this->energy += dE;
                 }
             }
         }
-        int n = x_rand.size()/samp_freq;
-        Real mean = sumsamp/((double) n);
+        int n = nsamp/samp_freq;
+        Real mean = (-0.5*J*sum_2jpairs-hmu*sum_mag)/((double) n);
         Real std = sqrt( sumsq/((double)(n-1)) - mean*mean*((double) n ) / ( (double) (n-1) ) );
-        return std::make_pair(mean, std);
+        return std::make_tuple(mean, std, sum_mag/((double) n));
     }
 };

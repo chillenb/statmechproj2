@@ -4,6 +4,7 @@
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 #include "model.h"
+#include <stdint.h>
 
 
 namespace py = pybind11;
@@ -23,7 +24,7 @@ PYBIND11_MODULE(_core, m) {
            subtract
     )pbdoc";
     py::class_<Model>(m, "Model")
-        .def(py::init<Real, Real, vector<int>>())
+        .def(py::init<uint64_t, Real, Real, vector<int>>())
         .def("get_spins", &Model::get_spins)
         .def("calc_energy", &Model::calc_energy)
         .def("random_mc", &Model::random_mc)

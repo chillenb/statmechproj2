@@ -4,11 +4,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-mpl.rcParams['text.usetex'] = True
-mpl.rcParams['text.latex.preamble'] = r"""
-\usepackage{newtxtext}
-\usepackage{newtxmath}
-"""
+#mpl.rcParams['text.usetex'] = True
+#mpl.rcParams['text.latex.preamble'] = r"""
+#\usepackage{newtxtext}
+#\usepackage{newtxmath}
+#"""
 
 def make_plot(tempgrid, eperspin):
     fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=False, tight_layout=True)
