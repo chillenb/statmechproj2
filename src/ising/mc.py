@@ -31,10 +31,10 @@ class ModelWrap:
         return energies
 
     def random_mc_meanstd(self, beta, nsamp, samp_freq=100, verbose=True):
-        mean, std = self.model.random_mc_meanstd(nsamp, beta, samp_freq)
+        mean, std, mag = self.model.random_mc_meanstd(nsamp, beta, samp_freq)
         if verbose:
-            print(f"Average energy: {mean:.4f} +/- {std:.4f}")
-        return mean, std
+            print(f"<E>: {mean:.4f} <M>: {mag:.4f}")
+        return mean, std, mag
     
     def random_mc_large(self, beta, nsamp, samp_freq=100, verbose=True, chunksize=1000000):
         c = min(chunksize, nsamp)
