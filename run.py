@@ -1,5 +1,6 @@
 import multiprocessing as mp
 
+import IPython
 import matplotlib.pyplot as plt
 import numpy as np
 import psutil
@@ -35,5 +36,4 @@ plt.show()
 plt.plot(temps, mags)
 plt.show()
 
-import IPython
 IPython.embed()

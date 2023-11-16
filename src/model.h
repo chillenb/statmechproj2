@@ -30,7 +30,7 @@ public:
   double J;
   double hmu;
   double energy;
-  int twojpairs;
+  int twojpairs = 0;
   int64_t magnetization = 0;
   std::mt19937 rng;
 
@@ -42,7 +42,19 @@ public:
       spins[i] = (spins_input[i] > 0) ? true : false;
     }
 
-    energy = calc_energy();
+    for (int i = 0; i < K; i++) {
+      for (int j = 0; j < K; j++) {
+        int s = spins[IDX(i, j)];
+        int sup = spins[IDX(modK(i + (K - 1)), j)];
+        int sdown = spins[IDX(modK(i + 1), j)];
+        int sleft = spins[IDX(i, modK(j + (K - 1)))];
+        int sright = spins[IDX(i, modK(j + 1))];
+        int sumspins = (sup + sdown + sleft + sright) * 2 - 4;
+        energy += -((0.5 * J) * sumspins + hmu) * (2 * s - 1);
+        twojpairs += sumspins * (2 * s - 1);
+        magnetization += (2 * s - 1);
+      }
+    }
     rng = std::mt19937(seed);
   }
 
@@ -52,58 +64,6 @@ public:
       spins_output[i] = this->spins[i] ? 1 : -1;
     }
     return spins_output;
-  }
-
-  double calc_energy() {
-    double E = 0.0;
-    twojpairs = 0;
-    magnetization = 0;
-    for (int i = 0; i < K; i++) {
-      for (int j = 0; j < K; j++) {
-        int s = spins[IDX(i, j)];
-        int sup = spins[IDX(modK(i + (K - 1)), j)];
-        int sdown = spins[IDX(modK(i + 1), j)];
-        int sleft = spins[IDX(i, modK(j + (K - 1)))];
-        int sright = spins[IDX(i, modK(j + 1))];
-        int sumspins = (sup + sdown + sleft + sright) * 2 - 4;
-        E += -((0.5 * J) * sumspins + hmu) * (2 * s - 1);
-        twojpairs += sumspins * (2 * s - 1);
-        magnetization += (2 * s - 1);
-      }
-    }
-    return E;
-  }
-
-  vector<Real> random_mc(vector<int> &x_rand, vector<int> &y_rand,
-                         vector<Real> &samp_rand, Real beta, int samp_freq) {
-    int next_samp = 0;
-    vector<Real> energies;
-    for (int k = 0; k < x_rand.size(); k++) {
-      if (k == next_samp) {
-        energies.push_back(this->energy);
-        next_samp += samp_freq;
-      }
-      int i = x_rand[k];
-      int j = y_rand[k];
-      int s = spins[IDX(i, j)];
-      int sup = spins[IDX(modK(i + (K - 1)), j)];
-      int sdown = spins[IDX(modK(i + 1), j)];
-      int sleft = spins[IDX(i, modK(j + (K - 1)))];
-      int sright = spins[IDX(i, modK(j + 1))];
-      int sumspins = (sup + sdown + sleft + sright) * 2 - 4;
-      Real dE = 2 * (2 * s - 1) * (J * sumspins + hmu);
-      if (dE < 0) {
-        spins[IDX(i, j)] = !s;
-        this->energy += dE;
-      } else {
-        Real p = exp(-beta * dE);
-        if (samp_rand[k] < p) {
-          spins[IDX(i, j)] = !s;
-          this->energy += dE;
-        }
-      }
-    }
-    return energies;
   }
 
   std::tuple<Real, Real, Real> random_mc_meanstd(int nsamp, Real beta,

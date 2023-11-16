@@ -12,7 +12,7 @@ using std::vector;
 
 PYBIND11_MODULE(_core, m) {
     m.doc() = R"pbdoc(
-        Pybind11 example plugin
+        Ising model in C++
         -----------------------
 
         .. currentmodule:: ising
@@ -20,14 +20,13 @@ PYBIND11_MODULE(_core, m) {
         .. autosummary::
            :toctree: _generate
 
-           add
-           subtract
+           get_spins
+           random_mc_meanstd
+           energy
     )pbdoc";
     py::class_<Model>(m, "Model")
         .def(py::init<uint64_t, Real, Real, vector<int>>())
         .def("get_spins", &Model::get_spins)
-        .def("calc_energy", &Model::calc_energy)
-        .def("random_mc", &Model::random_mc)
         .def("random_mc_meanstd", &Model::random_mc_meanstd)
         .def_readwrite("energy", &Model::energy);
 
