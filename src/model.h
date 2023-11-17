@@ -86,7 +86,7 @@ public:
     for (int k = 0; k < nsamp; k++) {
       if (k == next_samp) {
         sum_2jpairs += twojpairs;
-        sum_mag += magnetization;
+        sum_mag += abs(magnetization);
         Real samp = -0.5 * J * twojpairs - hmu * magnetization;
         sumsq += samp * samp;
         next_samp += samp_freq;

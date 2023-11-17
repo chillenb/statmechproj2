@@ -31,9 +31,10 @@ with mp.Pool(ncpus) as pool:
 
 aves = np.array([d[0] for d in data])
 mags = np.array([d[2] for d in data])
+stds = np.array([d[1] for d in data])
 plt.plot(temps[:-1], np.diff(aves)/np.diff(temps)/400)
 plt.show()
 plt.plot(temps, mags)
 plt.show()
 
-IPython.embed()
+np.savez('J0_h0_1e6warm_4e8run.npz', temps=temps, aves=aves, mags=mags, stds=stds)
